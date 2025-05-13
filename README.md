@@ -1,7 +1,8 @@
-### Quantum LSTM based on Entangling and Disentangling Unitary Transformaitons
+### Quantum RNNs and LSTMs Through Entangling and Disentangling Power of Unitary Transformations, Ammar Daskin, 2025. 
+ [https://arxiv.org/pdf/2505.06774](https://arxiv.org/pdf/2505.06774)
 
-The simulation code that is used to generate the figures in the paper:
-- *Quantum RNNs and LSTMs Through Entangling and Disentangling Power of Unitary Transformations, Ammar Daskin, 2025.*
+The simulation code that was used to generate the figures in the paper:
+- *Quantum RNNs and LSTMs Through Entangling and Disentangling Power of Unitary Transformations, Ammar Daskin, 2025. [https://arxiv.org/pdf/2505.06774](https://arxiv.org/pdf/2505.06774)*
 
 You can run `quantum_lstm_collapsed_state.py` or `quantum_lstm_density_matrix.py` as indicated by their names one of them uses the normalized collapsed state as the hidden state $|h_t \rangle$, the other one uses the probabilities, where we use the diagonal of density matrix, this can be found without generating density matrix.
 
