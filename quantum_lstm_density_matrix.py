@@ -176,26 +176,32 @@ if __name__ == "__main__":
     # Generate a sine wave dataset.
     num_points = 100
     seq_len = 10
-
+    # Generate x values and a noisy sine wave.
     x_vals = np.linspace(0, 8 * math.pi, num_points)
-    y_vals = f(x_vals)  # Shape: (num_points,)
+    y_vals = f(x_vals) + 0.1 * np.random.randn(num_points)
+    
+    # Split the raw data first
+    split_idx = int(0.8 * len(y_vals))
+    train_vals = y_vals[:split_idx]
+    test_vals = y_vals[split_idx:]
+    
+    # Create sequences separately for train and test
+    X_train_seq, y_train_seq = [], []
+    for i in range(len(train_vals) - seq_len):
+        X_train_seq.append(train_vals[i : i + seq_len])
+        y_train_seq.append(train_vals[i + seq_len])
+    
+    X_test_seq, y_test_seq = [], []
+    for i in range(len(test_vals) - seq_len):
+        X_test_seq.append(test_vals[i : i + seq_len])
+        y_test_seq.append(test_vals[i + seq_len])
 
-    # Create sequences: each input is a sequence of length seq_len, and the target is the next value.
-    X_seq = np.array([y_vals[i : i + seq_len] for i in range(num_points - seq_len)])
-    y_seq = np.array(y_vals[seq_len:]).reshape(-1, 1)
-
-    # Convert to torch tensors.
-    X_tensor = torch.tensor(X_seq, dtype=torch.float64).unsqueeze(
-        -1
-    )  # Shape: (samples, seq_len, 1)
-    y_tensor = torch.tensor(y_seq, dtype=torch.float64)  # Shape: (samples, 1)
-
-    # Split the data into training (80%) and test (20%) sets.
-    split_idx = int(0.8 * X_tensor.size(0))
-    X_train = X_tensor[:split_idx]
-    y_train = y_tensor[:split_idx]
-    X_test = X_tensor[split_idx:]
-    y_test = y_tensor[split_idx:]
+    # Convert to torch tensors
+    X_train = torch.tensor(np.array(X_train_seq), dtype=torch.float64).unsqueeze(-1)
+    y_train = torch.tensor(np.array(y_train_seq), dtype=torch.float64).reshape(-1, 1)
+    X_test = torch.tensor(np.array(X_test_seq), dtype=torch.float64).unsqueeze(-1)
+    y_test = torch.tensor(np.array(y_test_seq), dtype=torch.float64).reshape(-1, 1)
+   
 
     # Training hyperparameters.
     num_epochs = 150

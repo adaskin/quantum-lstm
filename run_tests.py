@@ -35,7 +35,7 @@ def generate_recent_weather_data(seq_len=10, num_days=30, train_split=0.8):
     from meteostat import Stations, Daily
 
     # Find weather stations in Istanbul (region code "34" in Turkey)
-    from meteostat import Stations  # local import in case Meteostat isn’t always used
+    from meteostat import Stations  # local import in case Meteostat isn't always used
 
     stations = Stations()
     stations = stations.region("CA", "ON")  # Canada, Ontario region
@@ -60,10 +60,19 @@ def generate_recent_weather_data(seq_len=10, num_days=30, train_split=0.8):
 
     # Drop missing values and convert to a numpy array
     temps = temps.dropna().values.reshape(-1, 1)
+    
+    # Split the data BEFORE fitting scaler
+    split_idx = int(train_split * len(temps))
+    train_temps = temps[:split_idx]
+    test_temps = temps[split_idx:]
 
-    # Normalize the temperature values using MinMaxScaler
+    # Normalize the temperature values using MinMaxScaler - FIT ONLY ON TRAINING
     scaler = MinMaxScaler(feature_range=(0, 1))
-    temps_scaled = scaler.fit_transform(temps).flatten()  # Flatten to 1D
+    train_scaled = scaler.fit_transform(train_temps).flatten()
+    test_scaled = scaler.transform(test_temps).flatten()
+    
+    # Combine scaled data for sequencing (test data not used in fitting)
+    temps_scaled = np.concatenate([train_scaled, test_scaled])
 
     # Create sequences (rolling windows)
     X_seq, y_seq = [], []
@@ -114,10 +123,19 @@ def generate_weather_data(csv_path, seq_len=10, train_split=0.8):
 
     # Extract the temperature data.
     temps = df["Temp"].values.reshape(-1, 1)  # Ensure 2D array for scaler
+    
+    # Split the data BEFORE fitting scaler
+    split_idx = int(train_split * len(temps))
+    train_temps = temps[:split_idx]
+    test_temps = temps[split_idx:]
 
-    # Normalize temperatures between 0 and 1.
+    # Normalize temperatures between 0 and 1 - FIT ONLY ON TRAINING
     scaler = MinMaxScaler(feature_range=(0, 1))
-    temps_scaled = scaler.fit_transform(temps).flatten()  # To get a 1D sequence.
+    train_scaled = scaler.fit_transform(train_temps).flatten()
+    test_scaled = scaler.transform(test_temps).flatten()
+    
+    # Combine scaled data for sequencing
+    temps_scaled = np.concatenate([train_scaled, test_scaled])
 
     # Create sequences: each sequence of length seq_len has the next time step as target.
     X_seq, y_seq = [], []
@@ -171,10 +189,19 @@ def generate_stock_data(csv_path, seq_len=10, feature="Close", train_split=0.8):
 
     # Extract the desired feature:
     prices = df[feature].values.reshape(-1, 1)
+    
+    # Split the data BEFORE fitting scaler
+    split_idx = int(train_split * len(prices))
+    train_prices = prices[:split_idx]
+    test_prices = prices[split_idx:]
 
-    # Normalize the data with MinMaxScaler
+    # Normalize the data with MinMaxScaler - FIT ONLY ON TRAINING
     scaler = MinMaxScaler(feature_range=(0, 1))
-    prices_scaled = scaler.fit_transform(prices).flatten()  # flatten into a 1D array
+    train_scaled = scaler.fit_transform(train_prices).flatten()
+    test_scaled = scaler.transform(test_prices).flatten()
+    
+    # Combine scaled data for sequencing
+    prices_scaled = np.concatenate([train_scaled, test_scaled])
 
     # Create sequences: each sequence of length seq_len with the target as the next data point.
     X_seq = []
@@ -224,21 +251,28 @@ def generate_sin_data(num_points=100, seq_len=10, noise_std=0.1, train_split=0.8
     # Generate x values and a noisy sine wave.
     x_vals = np.linspace(0, 8 * math.pi, num_points)
     y_vals = np.sin(x_vals) + noise_std * np.random.randn(num_points)
+    
+    # Split the raw data first
+    split_idx = int(train_split * len(y_vals))
+    train_vals = y_vals[:split_idx]
+    test_vals = y_vals[split_idx:]
+    
+    # Create sequences separately for train and test
+    X_train_seq, y_train_seq = [], []
+    for i in range(len(train_vals) - seq_len):
+        X_train_seq.append(train_vals[i : i + seq_len])
+        y_train_seq.append(train_vals[i + seq_len])
+    
+    X_test_seq, y_test_seq = [], []
+    for i in range(len(test_vals) - seq_len):
+        X_test_seq.append(test_vals[i : i + seq_len])
+        y_test_seq.append(test_vals[i + seq_len])
 
-    # Create sequences: each input is a length-sequence, and target is the immediate next value.
-    X_seq = np.array([y_vals[i : i + seq_len] for i in range(num_points - seq_len)])
-    y_seq = np.array(y_vals[seq_len:]).reshape(-1, 1)
-
-    # Convert to torch tensors. X_tensor: (samples, seq_len, 1); y_tensor: (samples, 1)
-    X_tensor = torch.tensor(X_seq, dtype=torch.float64).unsqueeze(-1)
-    y_tensor = torch.tensor(y_seq, dtype=torch.float64)
-
-    # Split into training and testing sets.
-    split_idx = int(train_split * X_tensor.size(0))
-    X_train = X_tensor[:split_idx]
-    y_train = y_tensor[:split_idx]
-    X_test = X_tensor[split_idx:]
-    y_test = y_tensor[split_idx:]
+    # Convert to torch tensors
+    X_train = torch.tensor(np.array(X_train_seq), dtype=torch.float64).unsqueeze(-1)
+    y_train = torch.tensor(np.array(y_train_seq), dtype=torch.float64).reshape(-1, 1)
+    X_test = torch.tensor(np.array(X_test_seq), dtype=torch.float64).unsqueeze(-1)
+    y_test = torch.tensor(np.array(y_test_seq), dtype=torch.float64).reshape(-1, 1)
 
     return X_train, y_train, X_test, y_test
 
